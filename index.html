@@ -77,7 +77,8 @@
     }
     #input-section {
       margin-top: 20px;
-      display: flex;
+      display: none; /* 初始状态下隐藏 */
+      flex-direction: row;
       justify-content: center;
       align-items: center;
     }
@@ -99,6 +100,44 @@
     button:hover {
       background-color: #0056b3;
     }
+
+    /* 处理步骤容器 */
+    .process-steps {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+      font-size: 14px; /* 文字变小 */
+      color: #555;
+    }
+
+    .process-step {
+      margin: 0 20px;
+      display: flex;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+    }
+
+    .process-step.completed {
+      opacity: 1;
+    }
+
+    .process-symbol {
+      margin-left: 10px;
+      font-size: 20px;
+    }
+
+    /* 更逼真的动效 */
+    @keyframes thinking-blink {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .thinking {
+      animation: thinking-blink 1.5s infinite;
+    }
+
   </style>
 </head>
 <body>
@@ -116,10 +155,6 @@
   <div id="input-section">
     <select id="user-input">
       <option value="" disabled selected>请选择输入...</option>
-      <option value="我很难过，这种感觉让我喘不过气来。">我很难过，这种感觉让我喘不过气来。</option>
-      <option value="我觉得自己做得不够好，很自责。">我觉得自己做得不够好，很自责。</option>
-      <option value="我想努力，但总是觉得力不从心。">我想努力，但总是觉得力不从心。</option>
-      <option value="我感到迷茫，不知道接下来该怎么办。">我感到迷茫，不知道接下来该怎么办。</option>
     </select>
     <button id="send-btn">发送</button>
   </div>
@@ -127,6 +162,12 @@
   <script>
     // 预设 AI 的自我介绍与回复语料
     const aiIntro = "你好！我是你的AI共情助手，很高兴和你对话。我会倾听你的想法，并与你一起探索可能的解决方案。";
+    const userOptions = [
+      "我很难过，这种感觉让我喘不过气来。",
+      "我觉得自己做得不够好，很自责。",
+      "我想努力，但总是觉得力不从心。",
+      "我感到迷茫，不知道接下来该怎么办。"
+    ];
     const aiReplies = [
       "听起来你感到很焦虑和迷茫，这种状态很难受吧？",
       "你提到通过努力改变现状，但可能遇到了很多困难。",
@@ -142,6 +183,7 @@
     const chatContainer = document.getElementById("chat-container");
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
+    const inputSection = document.getElementById("input-section");
 
     // 添加消息到聊天界面
     function addMessage(content, type, gradual = false, isAI = false) {
@@ -149,7 +191,7 @@
       message.className = `message ${type}`;
       if (isAI) {
         const img = document.createElement("img");
-        img.src = "https://github.com/vijay320111/chat2/raw/main/tongbei.png"; // 使用您的图片 URL
+        img.src = "https://github.com/vijay320111/chat2/raw/main/tongbei.png"; // 使用指定的头像 URL
         message.appendChild(img);
       }
       const text = document.createElement("span");
@@ -177,6 +219,33 @@
       }, 50); // 每个字符显示的间隔时间（毫秒）
     }
 
+    // 显示处理步骤的动效
+    function showProcessSteps(steps, callback) {
+      const processContainer = document.createElement("div");
+      processContainer.classList.add("process-steps");
+
+      steps.forEach((step, index) => {
+        const processStep = document.createElement("div");
+        processStep.classList.add("process-step");
+        processStep.textContent = step;
+        const processSymbol = document.createElement("span");
+        processSymbol.classList.add("process-symbol");
+        processStep.appendChild(processSymbol);
+        processContainer.appendChild(processStep);
+
+        setTimeout(() => {
+          processStep.classList.add("completed", "thinking"); // 使用动画
+          processSymbol.textContent = "✅"; // 使用 ✅ 符号
+        }, index * 1000); // 延迟显示每个步骤
+
+      });
+
+      chatContainer.appendChild(processContainer);
+
+      // 等待所有步骤完成后显示AI回复
+      setTimeout(callback, steps.length * 1000);
+    }
+
     // 开始体验按钮点击事件
     document.getElementById("start-btn").addEventListener("click", () => {
       startContainer.style.display = "none";
@@ -185,8 +254,20 @@
       // AI 自我介绍
       setTimeout(() => {
         addMessage(aiIntro, "ai", true, true); // 使用头像并渐变显示
+        setTimeout(showUserInput, 2000); // 2秒后展示用户输入框
       }, 500);
     });
+
+    // 展示用户输入框
+    function showUserInput() {
+      if (replyIndex < userOptions.length) {
+        userInput.innerHTML = `<option value="${userOptions[replyIndex]}">${userOptions[replyIndex]}</option>`;
+        inputSection.style.display = "flex"; // 显示输入框
+      } else {
+        userInput.innerHTML = '<option value="" disabled selected>没有更多选项</option>';
+        inputSection.style.display = "none"; // 隐藏输入框
+      }
+    }
 
     // 发送消息
     sendBtn.addEventListener("click", () => {
@@ -196,19 +277,43 @@
       // 用户消息
       addMessage(userText, "user");
       userInput.value = ""; // 清空下拉框
+      inputSection.style.display = "none"; // 隐藏输入框
 
-      // AI 回复
-      if (replyIndex < aiReplies.length) {
-        setTimeout(() => {
-          addMessage(aiReplies[replyIndex], "ai", true, true); // 使用头像并渐变显示
-          replyIndex++;
-        }, 1000); // 模拟 AI 回复的延迟
-      } else {
-        setTimeout(() => {
-          addMessage("目前的对话已经结束，如果需要更多帮助，请联系相关人员。", "ai", true, true);
-        }, 1000);
+      // 定义随机生成的思考过程步骤
+      const randomProcesses = [
+        ["检索知识库", "找到1个来源"],
+        ["搜索网页", "找到3个来源"],
+        ["检索知识库", "搜索网页", "找到4个来源"],
+        ["检索知识库", "找到2个来源"],
+        ["搜索网页", "找到1个来源"]
+      ];
+
+      // 确保至少有一次包含“搜索网页”和“检索知识库”的步骤
+      if (replyIndex === 0) {
+        randomProcesses.push(["检索知识库", "搜索网页", "找到2个来源"]);
       }
+
+      const randomIndex = Math.floor(Math.random() * randomProcesses.length);
+      const processSteps = randomProcesses[randomIndex];
+
+      showProcessSteps(processSteps, () => {
+        // AI 回复
+        if (replyIndex < aiReplies.length) {
+          setTimeout(() => {
+            addMessage(aiReplies[replyIndex], "ai", true, true); // 使用头像并渐变显示
+            replyIndex++;
+            setTimeout(showUserInput, 2000); // 2秒后展示用户输入框
+          }, 1000); // 模拟 AI 回复的延迟
+        } else {
+          setTimeout(() => {
+            addMessage("目前的对话已经结束，如果需要更多帮助，请联系相关人员。", "ai", true, true);
+          }, 1000);
+        }
+      });
     });
   </script>
 </body>
 </html>
+
+
+
